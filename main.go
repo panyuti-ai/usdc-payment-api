@@ -225,6 +225,16 @@ func main() {
 
 	r := gin.Default()
 
+	// 允許跨域請求，讓其他網站也能呼叫這個 API
+	r.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET")
+		c.Next()
+	})
+	// 提供前端頁面
+	r.GET("/", func(c *gin.Context) {
+		c.File("index.html")
+	})
 	r.GET("/balance/:address", getBalance)
 	r.GET("/transfers/:address", getTransfers)
 	r.GET("/tx/:hash", getTx)

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USDC Payment API</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0a0a0a;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            padding: 40px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+
+        .usdc-logo { width: 48px; height: 48px; }
+
+        h1 { font-size: 28px; color: #2775CA; }
+
+        .subtitle { color: #666; font-size: 14px; margin-top: 4px; }
+
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        input {
+            flex: 1;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 14px 16px;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            outline: none;
+        }
+
+        input:focus { border-color: #2775CA; }
+
+        input::placeholder { color: #444; }
+
+        button {
+            background: #2775CA;
+            border: none;
+            border-radius: 8px;
+            padding: 14px 24px;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        button:hover { background: #1a5fa8; }
+
+        .balance-card {
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            display: none;
+        }
+
+        .balance-label { color: #666; font-size: 12px; margin-bottom: 8px; }
+
+        .balance-value { color: #2775CA; font-size: 36px; font-weight: bold; }
+
+        .balance-address { color: #444; font-size: 12px; margin-top: 8px; }
+
+        .section-title {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 16px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            display: none;
+        }
+
+        th {
+            text-align: left;
+            color: #444;
+            font-size: 12px;
+            padding: 12px 16px;
+            border-bottom: 1px solid #222;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #111;
+            font-size: 13px;
+        }
+
+        tr:hover td { background: #111; }
+
+        .address { color: #888; font-size: 12px; }
+
+        .value { color: #2775CA; font-weight: bold; }
+
+        .block { color: #444; font-size: 12px; }
+
+        .tag-sent {
+            background: #2a1010;
+            color: #f87171;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .tag-received {
+            background: #0f2a1a;
+            color: #4ade80;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .error {
+            color: #f87171;
+            font-size: 14px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .loading {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 16px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img class="usdc-logo" src="https://assets.coingecko.com/coins/images/6319/small/usdc.png" alt="USDC">
+        <div>
+            <h1>USDC Payment API</h1>
+            <div class="subtitle">Query any Ethereum address for USDC balance and transfers</div>
+        </div>
+    </div>
+
+    <div class="search-box">
+        <input id="address-input" type="text" placeholder="Enter Ethereum address (0x...)">
+        <button onclick="search()">Search</button>
+    </div>
+
+    <div class="error" id="error">❌ Invalid address or no data found.</div>
+    <div class="loading" id="loading">⏳ Fetching data...</div>
+
+    <div class="balance-card" id="balance-card">
+        <div class="balance-label">USDC BALANCE</div>
+        <div class="balance-value" id="balance-value">0.00 USDC</div>
+        <div class="balance-address" id="balance-address"></div>
+    </div>
+
+    <div class="section-title" id="transfers-title" style="display:none">
+        RECENT TRANSFERS
+    </div>
+
+    <table id="transfers-table">
+        <thead>
+            <tr>
+                <th>TYPE</th>
+                <th>BLOCK</th>
+                <th>FROM</th>
+                <th>TO</th>
+                <th>AMOUNT</th>
+            </tr>
+        </thead>
+        <tbody id="transfers-body"></tbody>
+    </table>
+
+    <script>
+        const currentAddress = () => document.getElementById('address-input').value.trim()
+
+        async function search() {
+            const address = currentAddress()
+
+            // 隱藏舊結果
+            document.getElementById('error').style.display = 'none'
+            document.getElementById('balance-card').style.display = 'none'
+            document.getElementById('transfers-table').style.display = 'none'
+            document.getElementById('transfers-title').style.display = 'none'
+
+            if (!address.startsWith('0x') || address.length !== 42) {
+                document.getElementById('error').style.display = 'block'
+                return
+            }
+
+            document.getElementById('loading').style.display = 'block'
+
+            try {
+                // 同時抓餘額和轉帳
+                const [balanceRes, transfersRes] = await Promise.all([
+                    fetch(`/balance/${address}`),
+                    fetch(`/transfers/${address}`)
+                ])
+
+                const balanceData = await balanceRes.json()
+                const transfersData = await transfersRes.json()
+
+                document.getElementById('loading').style.display = 'none'
+
+                // 顯示餘額
+                document.getElementById('balance-value').textContent =
+                    balanceData.balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' USDC'
+                document.getElementById('balance-address').textContent = address
+                document.getElementById('balance-card').style.display = 'block'
+
+                // 顯示轉帳
+                if (transfersData.transfers && transfersData.transfers.length > 0) {
+                    const tbody = document.getElementById('transfers-body')
+                    tbody.innerHTML = transfersData.transfers.map(t => {
+                        const isSent = t.from.toLowerCase() === address.toLowerCase()
+                        return `
+                            <tr>
+                                <td>${isSent
+                                    ? '<span class="tag-sent">SENT</span>'
+                                    : '<span class="tag-received">RECEIVED</span>'
+                                }</td>
+                                <td class="block">#${t.block_number.toLocaleString()}</td>
+                                <td class="address">${t.from.slice(0,6)}...${t.from.slice(-4)}</td>
+                                <td class="address">${t.to.slice(0,6)}...${t.to.slice(-4)}</td>
+                                <td class="value">${t.value_usdc.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} USDC</td>
+                            </tr>
+                        `
+                    }).join('')
+
+                    document.getElementById('transfers-title').style.display = 'block'
+                    document.getElementById('transfers-table').style.display = 'table'
+                }
+
+            } catch (e) {
+                document.getElementById('loading').style.display = 'none'
+                document.getElementById('error').style.display = 'block'
+            }
+        }
+
+        // 按 Enter 也可以搜尋
+        document.getElementById('address-input').addEventListener('keypress', e => {
+            if (e.key === 'Enter') search()
+        })
+    </script>
+</body>
+</html>
