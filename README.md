@@ -6,6 +6,8 @@ Supports querying balance, transfer history (sent + received), and transaction s
 
 ## Demo
 
+![screenshot](screenshot.png)
+
 Open `http://localhost:8080` after running to use the web dashboard.
 
 ## Endpoints

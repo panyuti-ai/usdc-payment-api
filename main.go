@@ -231,13 +231,13 @@ func main() {
 		c.Header("Access-Control-Allow-Methods", "GET")
 		c.Next()
 	})
-	// 提供前端頁面
-	r.GET("/", func(c *gin.Context) {
-		c.File("index.html")
-	})
 	r.GET("/balance/:address", getBalance)
 	r.GET("/transfers/:address", getTransfers)
 	r.GET("/tx/:hash", getTx)
+	r.GET("/", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+		c.File("index.html")
+	})
 
 	fmt.Println("🚀 API 伺服器啟動：http://localhost:8080")
 	r.Run(":8080")

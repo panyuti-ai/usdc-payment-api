@@ -186,20 +186,22 @@
         const currentAddress = () => document.getElementById('address-input').value.trim()
 
         async function search() {
-            const address = currentAddress()
+    const address = currentAddress()
+    console.log('address length:', address.length, 'value:', address)
 
-            // 隱藏舊結果
-            document.getElementById('error').style.display = 'none'
-            document.getElementById('balance-card').style.display = 'none'
-            document.getElementById('transfers-table').style.display = 'none'
-            document.getElementById('transfers-title').style.display = 'none'
+    document.getElementById('error').style.display = 'none'
+    document.getElementById('balance-card').style.display = 'none'
+    document.getElementById('transfers-table').style.display = 'none'
+    document.getElementById('transfers-title').style.display = 'none'
 
-            if (!address.startsWith('0x') || address.length !== 42) {
-                document.getElementById('error').style.display = 'block'
-                return
-            }
+    if (!address.startsWith('0x') || address.length < 40) {
+        console.log('validation failed')
+        document.getElementById('error').style.display = 'block'
+        return
+    }
 
-            document.getElementById('loading').style.display = 'block'
+    console.log('validation passed, fetching...')
+    document.getElementById('loading').style.display = 'block'
 
             try {
                 // 同時抓餘額和轉帳
@@ -243,9 +245,10 @@
                 }
 
             } catch (e) {
-                document.getElementById('loading').style.display = 'none'
-                document.getElementById('error').style.display = 'block'
-            }
+    console.log('fetch error:', e)
+    document.getElementById('loading').style.display = 'none'
+    document.getElementById('error').style.display = 'block'
+}
         }
 
         // 按 Enter 也可以搜尋
